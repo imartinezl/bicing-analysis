@@ -9,7 +9,7 @@ bicingJson = r.json()
 
 #conexión a la base de datos
 try:
-    conn = psycopg2.connect("dbname='postgres' user='postgres' host='localhost' password='postgres'")
+    conn = psycopg2.connect("dbname='bicing' user='postgres' host='localhost' password='root'")
 except:
     print("I am unable to connect to the database")
 
