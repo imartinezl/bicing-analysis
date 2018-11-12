@@ -12,18 +12,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 import requests
 import os
+from datetime import datetime
+from datetime import timedelta
 from keys import *
 # =============================================================================
 # DATA IMPORTATION
 # =============================================================================
 csv_file = "data/2018_09_setembre_bicing_estacions.csv"
 df = pd.read_csv(csv_file, sep=';',decimal=',')
+date_format = '%d/%m/%y %H:%M:%S'
 
 # =============================================================================
 # DATA PREPROCESSING
 # =============================================================================
 df_electric = df[df['type']=='BIKE-ELECTRIC']
 #plt.scatter(df_electric['latitude'],df_electric['longitude'])
+df_electric['datetime'] = pd.to_datetime(df_electric['updateTime'],format=date_format)
+df_electric['date'] = df_electric['datetime'].dt.date
 df_electric = df_electric.assign(total_space = df_electric.slots+df_electric.bikes)
 df_electric = df_electric.assign(flux = df_electric.groupby('id')['bikes'].diff(1) ) 
 df_electric = df_electric[df_electric['flux']!=0].dropna()
@@ -69,26 +74,50 @@ else:
 # POSSIBLE TRIPS
 # =============================================================================
 
-df_trips = []
-col_names = ["origin_id","origin_time","destiny_id","destiny_time"]
-origin_names = {"id": col_names[0], "updateTime": col_names[1]}
-destiny_names = {"id": col_names[2], "updateTime": col_names[3]}
-for index, row in df_electric.iterrows():
-    print(row)
+col_names = ["origin","origin_time","destination","destination_time","cost"]
+origin_names = {"id": col_names[0], "datetime": col_names[1]}
+destiny_names = {"id": col_names[2], "datetime": col_names[3]}
+def trips_calculation(row):
+    k = 1
+    cond1 = (df_electric.id != row.id)
+    cond3 = (df_electric.date >= row.date - timedelta(days=1))
+    cond4 = (df_electric.date <= row.date + timedelta(days=1))
     if row.flux > 0:
-        cond1 = (df_electric.id != row.id)
         cond2 = (df_electric.updateTime < row.updateTime)
-        trip = df_electric[cond1 & cond2][['id','updateTime']].rename(columns=origin_names)
-        trip[col_names[2]] = row['id']
-        trip[col_names[3]] = row['updateTime']
-        
-        system = pd.DataFrame([ [0,0,row['id'],row['updateTime']] ], columns=col_names)
-        trip.append(system)
+        trips = df_electric[cond1 & cond2 & cond3 & cond4][['id','datetime']].rename(columns=origin_names)
+        trips[col_names[2]] = row['id']
+        trips[col_names[3]] = row['datetime']
         
     elif row.flux < 0:
-        df_electric.id != row.id
-        df_electric.updateTime > row.updateTime
-df.trips.append()
+        cond2 = (df_electric.updateTime > row.updateTime)
+        trips = df_electric[cond1 & cond2 & cond3 & cond4][['id','datetime']].rename(columns=destiny_names)
+        trips[col_names[0]] = row['id']
+        trips[col_names[1]] = row['datetime']
+    trips = trips.assign(duration=(trips['destination_time']-trips['origin_time']).dt.seconds)
+        
+    trips_ext = trips.merge(df_cost,on=['origin','destination'])
+    trips_ext['cost'] = round(abs(trips_ext.duration - trips_ext.travelTime)/trips_ext.travelTime,2)
+    trips_ext = trips_ext[trips_ext['cost']<k][col_names]
+    exception = pd.DataFrame([ [row['id'],row['datetime'],0,0,k] ], columns=col_names)
+    trips_ext.append(exception)
+    
+    return(trips_ext)
+    
+trips_file = 'trips.csv'
+if not os.path.isfile(trips_file):
+    tmp = []
+    for index, row in df_electric.iterrows():
+        tmp.append(row)
+    from multiprocessing.dummy import Pool as ThreadPool 
+    pool = ThreadPool(16)
+    trips_list = pool.map(trips_calculation, tmp)
+    pool.close() 
+    pool.join() 
 
+    sum([m.shape[0] for m in trips_list])
+    df_trips = pd.concat(trips_list)
+    df_trips.to_csv(trips_file,index=False)
+else:
+    df_trips = pd.read_csv(trips_file)
 
 
