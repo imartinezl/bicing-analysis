@@ -122,28 +122,37 @@ if not os.path.isfile(trips_file):
 else:
     df_trips = pd.read_csv(trips_file)
 
-
-from scipy.sparse import lil_matrix, csr_matrix
-c = csr_matrix(df_trips.cost, dtype=np.double )
-b = csr_matrix(abs(df_electric.flux), dtype=np.int16 )
-A = lil_matrix( (df_electric.shape[0],df_trips.shape[0]), dtype=np.int16 )#.todense()
-cont = 0
-for index, row in df_electric.iterrows():
-    if cont % 10==0:
-        print(cont)
-    if row.flux < 0:
-        A[cont,:] = ((row.id == df_trips.origin) & (row.datetime == df_trips.origin_time))
-    if row.flux > 0:
-        A[cont,:] = ((row.id == df_trips.destination) & (row.datetime == df_trips.destination_time))
-    cont += 1
+opt_file = "opt.mat"
+if not os.path.isfile(trips_file):
     
-from scipy.io import savemat
-savemat('temp', {'A':A,'b':b,'c':c})
+    from scipy.sparse import lil_matrix, csr_matrix
+    c = csr_matrix(df_trips.cost, dtype=np.double )
+    b = csr_matrix(abs(df_electric.flux), dtype=np.int16 )
+    A = lil_matrix( (df_electric.shape[0],df_trips.shape[0]), dtype=np.int16 )#.todense()
+    cont = 0
+    for index, row in df_electric.iterrows():
+        if cont % 10==0:
+            print(cont)
+        if row.flux < 0:
+            A[cont,:] = ((row.id == df_trips.origin) & (row.datetime == df_trips.origin_time))
+        if row.flux > 0:
+            A[cont,:] = ((row.id == df_trips.destination) & (row.datetime == df_trips.destination_time))
+        cont += 1
+        
+    from scipy.io import savemat
+    savemat(opt_file, {'A':A,'b':b,'c':c})
+    
+else:
+    from scipy.io import loadmat
+    d = loadmat(opt_file)
+    A = d['A']; b = d['b']; c = d['c']
+
 # Send to cplex matlab
 
-df_trips['flow'] = pd.read_csv('x.csv')
+df_trips['flow'] = pd.read_csv('solution.csv')
     
-    
-    
-    
+df_bicing = df_trips[(df_trips['flow']>0) & (df_trips['origin']!=0) & (df_trips['destination']!=0)]
+plt.hist(df_bicing.flow)
+df_bicing.groupby('origin').size().sort_values(ascending=False)
+df_bicing.groupby('destination').size().sort_values(ascending=False)
     

@@ -5,7 +5,7 @@ close all
 addpath('C:\Program Files\IBM\ILOG\CPLEX_Studio125\cplex\matlab\x64_win64');
 addpath('C:\Program Files\IBM\ILOG\CPLEX_Studio125\cplex\examples\src\matlab');
 
-load temp
+load opt
 
 m = size(A,1);
 n = size(A,2);
@@ -37,4 +37,4 @@ disp ('Values = ');
 % disp (cplex.Solution.x');
 plot(cplex.Solution.x,'*');
 
-csvwrite('x.csv',cplex.Solution.x);
+csvwrite('solution.csv',cplex.Solution.x);
