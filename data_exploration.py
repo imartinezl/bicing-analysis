@@ -87,19 +87,21 @@ def trips_calculation(row):
         trips = df_electric[cond1 & cond2 & cond3 & cond4][['id','datetime']].rename(columns=origin_names)
         trips[col_names[2]] = row['id']
         trips[col_names[3]] = row['datetime']
+        extra = [0,0,row['id'],row['datetime'],k]
         
     elif row.flux < 0:
         cond2 = (df_electric.updateTime > row.updateTime)
         trips = df_electric[cond1 & cond2 & cond3 & cond4][['id','datetime']].rename(columns=destiny_names)
         trips[col_names[0]] = row['id']
         trips[col_names[1]] = row['datetime']
+        extra = [row['id'],row['datetime'],0,0,k]
     trips = trips.assign(duration=(trips['destination_time']-trips['origin_time']).dt.seconds)
         
     trips_ext = trips.merge(df_cost,on=['origin','destination'])
     trips_ext['cost'] = round(abs(trips_ext.duration - trips_ext.travelTime)/trips_ext.travelTime,2)
     trips_ext = trips_ext[trips_ext['cost']<k][col_names]
-    exception = pd.DataFrame([ [row['id'],row['datetime'],0,0,k] ], columns=col_names)
-    trips_ext.append(exception)
+    exception = pd.DataFrame([extra], columns=col_names)
+    trips_ext = trips_ext.append(exception)
     
     return(trips_ext)
     
@@ -121,3 +123,27 @@ else:
     df_trips = pd.read_csv(trips_file)
 
 
+from scipy.sparse import lil_matrix, csr_matrix
+c = csr_matrix(df_trips.cost, dtype=np.double )
+b = csr_matrix(abs(df_electric.flux), dtype=np.int16 )
+A = lil_matrix( (df_electric.shape[0],df_trips.shape[0]), dtype=np.int16 )#.todense()
+cont = 0
+for index, row in df_electric.iterrows():
+    if cont % 10==0:
+        print(cont)
+    if row.flux < 0:
+        A[cont,:] = ((row.id == df_trips.origin) & (row.datetime == df_trips.origin_time))
+    if row.flux > 0:
+        A[cont,:] = ((row.id == df_trips.destination) & (row.datetime == df_trips.destination_time))
+    cont += 1
+    
+from scipy.io import savemat
+savemat('temp', {'A':A,'b':b,'c':c})
+# Send to cplex matlab
+
+df_trips['flow'] = pd.read_csv('x.csv')
+    
+    
+    
+    
+    
