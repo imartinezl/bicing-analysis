@@ -48,6 +48,9 @@ def route_estimation(waypoint0, waypoint1, app_id='', app_code=''):
     return [travelTime, distance, trajectory]
 
 stations = df_electric.groupby('id').first()#.reset_index()
+stations_file = "stations.csv"
+if not os.path.isfile(stations_file):
+    stations.to_csv(stations_file)
 stations_pairs = [(x, y) for x in stations.index for y in stations.index if x != y]
 stations_pairs = list(set((i,j) if i<=j else (j,i) for i,j in stations_pairs))
 def get_point(x):
@@ -151,8 +154,9 @@ else:
 
 df_trips['flow'] = pd.read_csv('solution.csv')
     
-df_bicing = df_trips[(df_trips['flow']>0) & (df_trips['origin']!=0) & (df_trips['destination']!=0)]
-plt.hist(df_bicing.flow)
-df_bicing.groupby('origin').size().sort_values(ascending=False)
-df_bicing.groupby('destination').size().sort_values(ascending=False)
+df_solution = df_trips[(df_trips['flow']>0) & (df_trips['origin']!=0) & (df_trips['destination']!=0)]
+plt.hist(df_solution.flow)
+df_solution.groupby('origin').size().sort_values(ascending=False)
+df_solution.groupby('destination').size().sort_values(ascending=False)
     
+a = pd.merge(df_cost,df_solution,how="right",on=['origin','destination'])
