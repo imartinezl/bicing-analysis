@@ -48,9 +48,9 @@ def route_estimation(waypoint0, waypoint1, app_id='', app_code=''):
     return [travelTime, distance, trajectory]
 
 stations = df_electric.groupby('id').first()#.reset_index()
-stations_file = "stations.csv"
+stations_file = "stations.json"
 if not os.path.isfile(stations_file):
-    stations.to_csv(stations_file)
+    stations.reset_index().to_json(stations_file,'records')
 stations_pairs = [(x, y) for x in stations.index for y in stations.index if x != y]
 stations_pairs = list(set((i,j) if i<=j else (j,i) for i,j in stations_pairs))
 def get_point(x):
@@ -68,9 +68,15 @@ if not os.path.isfile(cost_file):
     
     cost_cols = ['origin','destination','travelTime','distance','trajectory']
     df_cost = pd.DataFrame(cost_list,columns=cost_cols)
+    df_cost_inv = df_cost.copy()
+    df_cost_inv['origin'] = df_cost['destination']
+    df_cost_inv['destination'] = df_cost['origin']
+    df_cost = pd.concat([df_cost,df_cost_inv])
     df_cost.to_csv(cost_file,index=False)
 else:
     df_cost = pd.read_csv(cost_file)
+    import ast
+    df_cost.trajectory = df_cost.trajectory.apply(ast.literal_eval)
 
 
 # =============================================================================
@@ -126,7 +132,7 @@ else:
     df_trips = pd.read_csv(trips_file)
 
 opt_file = "opt.mat"
-if not os.path.isfile(trips_file):
+if not os.path.isfile(opt_file):
     
     from scipy.sparse import lil_matrix, csr_matrix
     c = csr_matrix(df_trips.cost, dtype=np.double )
@@ -159,4 +165,34 @@ plt.hist(df_solution.flow)
 df_solution.groupby('origin').size().sort_values(ascending=False)
 df_solution.groupby('destination').size().sort_values(ascending=False)
     
-a = pd.merge(df_cost,df_solution,how="right",on=['origin','destination'])
+df_complete = pd.merge(df_cost,df_solution,how="right",on=['origin','destination'])
+df_complete['origin_datetime'] = pd.to_datetime(df_complete['origin_time'])
+df_complete['destination_datetime'] = pd.to_datetime(df_complete['destination_time'])
+
+df_complete['origin_datetime'].value_counts()
+df_complete['destination_datetime'].value_counts()
+
+times_origin = pd.Series(df_complete['origin_datetime'].unique()).sort_values().dt.round('15min')
+times_destination = pd.Series(df_complete['destination_datetime'].unique()).sort_values().dt.round('15min')
+
+minimum = min([min(times_origin),min(times_destination)])
+maximum = max([max(times_origin),max(times_destination)])
+timestamps = pd.date_range(minimum,maximum,freq='15T')#.tolist()
+
+def find_nearest(x,elem):
+    R = np.abs(x-elem)
+    idx = np.where(R==R.min())[0][0]
+    return idx
+
+df_complete['origin_idx'] = df_complete['origin_datetime'].apply(lambda x: find_nearest(timestamps,x))
+df_complete['origin_timestamp'] = timestamps[df_complete['origin_idx']]
+df_complete['destination_idx'] = df_complete['destination_datetime'].apply(lambda x: find_nearest(timestamps,x))
+df_complete['destination_timestamp'] = timestamps[df_complete['destination_idx']]
+
+import json
+print(json.dumps(json.loads(df_complete.iloc[0:1].to_json(orient='index')), indent=2))
+with open('data.json', 'w') as outfile:
+    json.dump(json.loads(df_complete.iloc[[0,9]].to_json(orient='index')),outfile)
+
+import json
+    json.dump(a.iloc[0].trajectory, outfile)
