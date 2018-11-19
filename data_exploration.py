@@ -104,7 +104,7 @@ def trips_calculation(row):
         trips[col_names[0]] = row['id']
         trips[col_names[1]] = row['datetime']
         extra = [row['id'],row['datetime'],0,0,k]
-    trips = trips.assign(duration=(trips['destination_time']-trips['origin_time']).dt.seconds)
+    trips = trips.assign(duration=(trips['destination_time']-trips['origin_time']).dt.total_seconds())
         
     trips_ext = trips.merge(df_cost,on=['origin','destination'])
     trips_ext['cost'] = round(abs(trips_ext.duration - trips_ext.travelTime)/trips_ext.travelTime,2)
@@ -192,7 +192,7 @@ df_complete['destination_timestamp'] = timestamps[df_complete['destination_idx']
 import json
 print(json.dumps(json.loads(df_complete.iloc[0:1].to_json(orient='index')), indent=2))
 with open('data.json', 'w') as outfile:
-    json.dump(json.loads(df_complete.iloc[[0,9]].to_json(orient='index')),outfile)
+    json.dump(json.loads(df_complete.iloc[0:100].to_json(orient='records')),outfile)
 
 import json
     json.dump(a.iloc[0].trajectory, outfile)
