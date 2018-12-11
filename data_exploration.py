@@ -72,6 +72,10 @@ if not os.path.isfile(cost_file):
     df_cost_inv['origin'] = df_cost['destination']
     df_cost_inv['destination'] = df_cost['origin']
     df_cost = pd.concat([df_cost,df_cost_inv])
+    df_cost['origin_latitude'] = stations.loc[df_cost.origin]['latitude'].values
+    df_cost['origin_longitude'] = stations.loc[df_cost.origin]['longitude'].values
+    df_cost['destination_latitude'] = stations.loc[df_cost.destination]['latitude'].values
+    df_cost['destination_longitude'] = stations.loc[df_cost.destination]['longitude'].values
     df_cost.to_csv(cost_file,index=False)
 else:
     df_cost = pd.read_csv(cost_file)
@@ -191,8 +195,26 @@ df_complete['destination_timestamp'] = timestamps[df_complete['destination_idx']
 
 import json
 print(json.dumps(json.loads(df_complete.iloc[0:1].to_json(orient='index')), indent=2))
-with open('data.json', 'w') as outfile:
-    json.dump(json.loads(df_complete.iloc[0:100].to_json(orient='records')),outfile)
+one_day = df_complete[(df_complete['origin_datetime']>"2018-09-09") & (df_complete['origin_datetime']<"2018-09-10")]
+with open('one_day.json', 'w') as outfile:
+    json.dump(json.loads(one_day.to_json(orient='records')),outfile)
 
-import json
-    json.dump(a.iloc[0].trajectory, outfile)
+## DATA PREPARATION FOR KEPLER.GL
+df_complete.to_csv('complete.csv', index=False)
+
+[i['latitude'] for i in df_complete['trajectory'][0] ]
+latitude = []
+longitude = []
+for line in df_complete['trajectory']:
+    for t in line:
+        latitude.append(t['latitude'])
+        longitude.append(t['longitude'])
+pd.DataFrame({'latitude':latitude,'longitude':longitude}).to_csv('trajectories.csv',index=False)
+        
+        
+        
+        
+        
+        
+        
+        
