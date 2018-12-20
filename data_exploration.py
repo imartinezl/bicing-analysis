@@ -163,7 +163,8 @@ else:
 # Send to cplex matlab
 
 df_trips['flow'] = pd.read_csv('solution.csv')
-    
+
+# Prepare Data for P5.js
 df_solution = df_trips[(df_trips['flow']>0) & (df_trips['origin']!=0) & (df_trips['destination']!=0)]
 plt.hist(df_solution.flow)
 df_solution.groupby('origin').size().sort_values(ascending=False)
@@ -202,15 +203,66 @@ with open('one_day.json', 'w') as outfile:
 ## DATA PREPARATION FOR KEPLER.GL
 df_complete.to_csv('complete.csv', index=False)
 
-[i['latitude'] for i in df_complete['trajectory'][0] ]
-latitude = []
-longitude = []
-for line in df_complete['trajectory']:
-    for t in line:
-        latitude.append(t['latitude'])
-        longitude.append(t['longitude'])
-pd.DataFrame({'latitude':latitude,'longitude':longitude}).to_csv('trajectories.csv',index=False)
-        
+
+# Prepare Data for Deck.GL
+df_solution = df_trips[(df_trips['flow']>0) & (df_trips['origin']!=0) & (df_trips['destination']!=0)]
+df_complete = pd.merge(df_cost,df_solution,how="right",on=['origin','destination'])
+df_complete['origin_datetime'] = pd.to_datetime(df_complete['origin_time'])
+df_complete['destination_datetime'] = pd.to_datetime(df_complete['destination_time'])
+
+from math import sin, cos, sqrt, atan2, radians
+def distance_lat_lon(lat1,lon1,lat2,lon2):    
+    # approximate radius of earth in km
+    R = 6373.0    
+    lat1 = radians(lat1)
+    lon1 = radians(lon1)
+    lat2 = radians(lat2)
+    lon2 = radians(lon2)
+    
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    
+    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))    
+    distance = R * c    
+    return distance
+
+
+selection = df_complete.sort_values('origin_time').iloc[0:100]
+tmin = np.min(selection.origin_datetime)
+tmin = int(tmin.timestamp())
+tmax = np.max(selection.destination_datetime)
+tmax = int(tmax.timestamp())
+loop = tmax-tmin
+to_save = []
+for row, item in selection.iterrows():
+    vendor = row; #item['flow']
+    
+    segments = []
+    # time interpolation based on distance
+    segments.append([item['origin_longitude'],
+                     item['origin_latitude'],
+                     np.round((int(item['origin_datetime'].timestamp())-tmin)/loop*2000,4)  ])
+
+    t = item['trajectory']
+    n =  len(t)
+    d = [distance_lat_lon(t[i]['latitude'],t[i]['longitude'],t[i+1]['latitude'],t[i+1]['longitude']) for i in range(0,n-1)]
+    d = np.cumsum(d/np.sum(d))
+    
+            
+#    segments.append([item['destination_latitude'],
+#                     item['destination_longitude'],
+#                     item['destination_datetime'].timestamp()  ])
+
+    tdelta = (item.destination_datetime-item.origin_datetime)
+    for i in range(0,n-1):
+        pt = item.origin_datetime+d[i]*tdelta 
+        segments.append([ t[i+1]['longitude'], t[i+1]['latitude'], np.round((int(pt.timestamp())-tmin)/loop*2000,4)])
+    to_save.append({"vendor":vendor,"segments":segments})
+    
+import json
+with open('tmp.json', 'w') as outfile:
+    json.dump(to_save, outfile)
         
         
         
