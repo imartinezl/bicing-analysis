@@ -71,6 +71,7 @@ if not os.path.isfile(cost_file):
     df_cost_inv = df_cost.copy()
     df_cost_inv['origin'] = df_cost['destination']
     df_cost_inv['destination'] = df_cost['origin']
+    df_cost_inv['trajectory'] = [list(reversed(x)) for x in df_cost['trajectory']]
     df_cost = pd.concat([df_cost,df_cost_inv])
     df_cost['origin_latitude'] = stations.loc[df_cost.origin]['latitude'].values
     df_cost['origin_longitude'] = stations.loc[df_cost.origin]['longitude'].values
@@ -228,7 +229,7 @@ def distance_lat_lon(lat1,lon1,lat2,lon2):
     return distance
 
 
-selection = df_complete.sort_values('origin_time').iloc[0:100]
+selection = df_complete.sort_values('origin_time').iloc[0:5]
 tmin = np.min(selection.origin_datetime)
 tmin = int(tmin.timestamp())
 tmax = np.max(selection.destination_datetime)
@@ -236,7 +237,7 @@ tmax = int(tmax.timestamp())
 loop = tmax-tmin
 to_save = []
 for row, item in selection.iterrows():
-    vendor = row; #item['flow']
+    vendor = 1 if item.flow > 1 else 0; #item['flow']
     
     segments = []
     # time interpolation based on distance
@@ -263,6 +264,8 @@ for row, item in selection.iterrows():
 import json
 with open('tmp.json', 'w') as outfile:
     json.dump(to_save, outfile)
+    
+
         
         
         
