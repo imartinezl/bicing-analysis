@@ -229,40 +229,44 @@ def distance_lat_lon(lat1,lon1,lat2,lon2):
     return distance
 
 
-selection = df_complete.sort_values('origin_time').iloc[0:5]
+selection = df_complete.sort_values('origin_time')#.iloc[0:500]
 tmin = np.min(selection.origin_datetime)
 tmin = int(tmin.timestamp())
 tmax = np.max(selection.destination_datetime)
 tmax = int(tmax.timestamp())
 loop = tmax-tmin
+loop_deck = 2000
 to_save = []
 for row, item in selection.iterrows():
-    vendor = 1 if item.flow > 1 else 0; #item['flow']
     
-    segments = []
-    # time interpolation based on distance
-    segments.append([item['origin_longitude'],
-                     item['origin_latitude'],
-                     np.round((int(item['origin_datetime'].timestamp())-tmin)/loop*2000,4)  ])
-
-    t = item['trajectory']
-    n =  len(t)
-    d = [distance_lat_lon(t[i]['latitude'],t[i]['longitude'],t[i+1]['latitude'],t[i+1]['longitude']) for i in range(0,n-1)]
-    d = np.cumsum(d/np.sum(d))
+    for i in range(int(item.flow)):
+        vendor = 1 if item.flow > 1 else 0; #item['flow']
+        segments = []
+        # time interpolation based on distance
+        segments.append([item['origin_longitude'] + np.random.rand()*1e-4,
+                         item['origin_latitude'] + np.random.rand()*1e-4,
+                         np.round((int(item['origin_datetime'].timestamp())-tmin + np.random.rand()*30)/loop*loop_deck,4)  ])
     
-            
-#    segments.append([item['destination_latitude'],
-#                     item['destination_longitude'],
-#                     item['destination_datetime'].timestamp()  ])
-
-    tdelta = (item.destination_datetime-item.origin_datetime)
-    for i in range(0,n-1):
-        pt = item.origin_datetime+d[i]*tdelta 
-        segments.append([ t[i+1]['longitude'], t[i+1]['latitude'], np.round((int(pt.timestamp())-tmin)/loop*2000,4)])
-    to_save.append({"vendor":vendor,"segments":segments})
+        t = item['trajectory']
+        n =  len(t)
+        d = [distance_lat_lon(t[i]['latitude'],t[i]['longitude'],t[i+1]['latitude'],t[i+1]['longitude']) for i in range(0,n-1)]
+        d = np.cumsum(d/np.sum(d))
+        
+                
+    #    segments.append([item['destination_latitude'],
+    #                     item['destination_longitude'],
+    #                     item['destination_datetime'].timestamp()  ])
+    
+        tdelta = (item.destination_datetime-item.origin_datetime)
+        for i in range(0,n-1):
+            pt = item.origin_datetime+d[i]*tdelta 
+            segments.append([t[i+1]['longitude'] + np.random.rand()*1e-4,
+                             t[i+1]['latitude'] + np.random.rand()*1e-4, 
+                             np.round((int(pt.timestamp())-tmin + np.random.rand()*30)/loop*loop_deck,4)])
+        to_save.append({"vendor":vendor,"segments":segments})
     
 import json
-with open('tmp.json', 'w') as outfile:
+with open('tmp_2.json', 'w') as outfile:
     json.dump(to_save, outfile)
     
 
