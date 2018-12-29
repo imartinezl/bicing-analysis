@@ -229,7 +229,7 @@ def distance_lat_lon(lat1,lon1,lat2,lon2):
     return distance
 
 
-selection = df_complete.sort_values('origin_time')#.iloc[0:500]
+selection = df_complete.sort_values('origin_time').iloc[0:500]
 tmin = np.min(selection.origin_datetime)
 tmin = int(tmin.timestamp())
 tmax = np.max(selection.destination_datetime)
@@ -240,7 +240,7 @@ to_save = []
 for row, item in selection.iterrows():
     
     for i in range(int(item.flow)):
-        vendor = 1 if item.flow > 1 else 0; #item['flow']
+        vendor = 1 if item.distance > 1000 else 0; #item['flow']
         segments = []
         # time interpolation based on distance
         segments.append([item['origin_longitude'] + np.random.rand()*1e-4,
@@ -266,12 +266,17 @@ for row, item in selection.iterrows():
         to_save.append({"vendor":vendor,"segments":segments})
     
 import json
-with open('tmp_2.json', 'w') as outfile:
+with open('tmp.json', 'w') as outfile:
     json.dump(to_save, outfile)
     
-
-        
-        
+selection['t'] = [x.round('1h') for x in selection.origin_datetime]
+s = selection.groupby('t').size().reset_index()
+s.to_csv('summary.csv',  index=False)
+import json
+with open('summary.json', 'w') as outfile:
+    s.t = s.t.astype(str)
+    to_save = [{"date":row['t'], "count":row[0]} for index, row in s.iterrows()]
+    json.dump(to_save, outfile)
         
         
         
