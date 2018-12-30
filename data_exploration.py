@@ -244,7 +244,6 @@ loop = tmax-tmin
 loop_deck = 2000
 
 
-
 selection['t'] = [x.round('1h') for x in selection.origin_datetime]
 s = selection.groupby('t').size().reset_index()
 s.t = s.t.astype(str)
