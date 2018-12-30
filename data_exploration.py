@@ -15,6 +15,8 @@ import os
 from datetime import datetime
 from datetime import timedelta
 from keys import *
+import json
+
 # =============================================================================
 # DATA IMPORTATION
 # =============================================================================
@@ -165,6 +167,8 @@ else:
 
 df_trips['flow'] = pd.read_csv('solution.csv')
 
+###############################################################################
+
 # Prepare Data for P5.js
 df_solution = df_trips[(df_trips['flow']>0) & (df_trips['origin']!=0) & (df_trips['destination']!=0)]
 plt.hist(df_solution.flow)
@@ -195,15 +199,17 @@ df_complete['origin_timestamp'] = timestamps[df_complete['origin_idx']]
 df_complete['destination_idx'] = df_complete['destination_datetime'].apply(lambda x: find_nearest(timestamps,x))
 df_complete['destination_timestamp'] = timestamps[df_complete['destination_idx']]
 
-import json
 print(json.dumps(json.loads(df_complete.iloc[0:1].to_json(orient='index')), indent=2))
 one_day = df_complete[(df_complete['origin_datetime']>"2018-09-09") & (df_complete['origin_datetime']<"2018-09-10")]
 with open('one_day.json', 'w') as outfile:
     json.dump(json.loads(one_day.to_json(orient='records')),outfile)
 
+###############################################################################
+
 ## DATA PREPARATION FOR KEPLER.GL
 df_complete.to_csv('complete.csv', index=False)
 
+###############################################################################
 
 # Prepare Data for Deck.GL
 df_solution = df_trips[(df_trips['flow']>0) & (df_trips['origin']!=0) & (df_trips['destination']!=0)]
@@ -236,6 +242,20 @@ tmax = np.max(selection.destination_datetime)
 tmax = int(tmax.timestamp())
 loop = tmax-tmin
 loop_deck = 2000
+
+
+
+selection['t'] = [x.round('1h') for x in selection.origin_datetime]
+s = selection.groupby('t').size().reset_index()
+s.t = s.t.astype(str)
+trips_count = [{"date":row['t'], "count":row[0]} for index, row in s.iterrows()]
+with open('trips_count.json', 'w') as outfile:
+    json.dump(trips_count, outfile)
+maxCount = np.ceil(np.max([x['count'] for x in trips_count])/10)*10
+trips_init = {"tmin":tmin,"tmax":tmax,"maxCount": maxCount}
+with open('trips_init.json', 'w') as outfile:
+    json.dump(trips_init, outfile)
+
 to_save = []
 for row, item in selection.iterrows():
     
@@ -265,18 +285,12 @@ for row, item in selection.iterrows():
                              np.round((int(pt.timestamp())-tmin + np.random.rand()*30)/loop*loop_deck,4)])
         to_save.append({"vendor":vendor,"segments":segments})
     
-import json
-with open('tmp.json', 'w') as outfile:
+
+with open('trips.json', 'w') as outfile:
     json.dump(to_save, outfile)
-    
-selection['t'] = [x.round('1h') for x in selection.origin_datetime]
-s = selection.groupby('t').size().reset_index()
-s.to_csv('summary.csv',  index=False)
-import json
-with open('summary.json', 'w') as outfile:
-    s.t = s.t.astype(str)
-    to_save = [{"date":row['t'], "count":row[0]} for index, row in s.iterrows()]
-    json.dump(to_save, outfile)
+
+
+
         
         
         
