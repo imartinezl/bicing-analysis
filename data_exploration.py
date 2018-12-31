@@ -244,8 +244,17 @@ loop = tmax-tmin
 loop_deck = 2000
 
 
-selection['t'] = [x.round('1h') for x in selection.origin_datetime]
-s = selection.groupby('t').size().reset_index()
+selection['t'] = [x.floor('30min') for x in selection.origin_datetime]
+
+time_resolution = pd.to_datetime(list(range(tmin, tmax, 60*60)), unit='s')
+time_resolution_count = np.zeros(len(time_resolution))
+for row, item in selection.iterrows():
+    for i in range(len(time_resolution)):
+        if (time_resolution[i] > item.origin_datetime) & (time_resolution[i] < item.destination_datetime):
+            time_resolution_count[i] = time_resolution_count[i] + item.flow;
+  
+s = pd.DataFrame({"t":time_resolution, "count":time_resolution_count})
+
 s.t = s.t.astype(str)
 trips_count = [{"date":row['t'], "count":row[0]} for index, row in s.iterrows()]
 with open('trips_count.json', 'w') as outfile:
