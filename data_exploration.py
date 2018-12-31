@@ -235,7 +235,7 @@ def distance_lat_lon(lat1,lon1,lat2,lon2):
     return distance
 
 
-selection = df_complete.sort_values('origin_time').iloc[0:500]
+selection = df_complete.sort_values('origin_time')#.iloc[500:2000]
 tmin = np.min(selection.origin_datetime)
 tmin = int(tmin.timestamp())
 tmax = np.max(selection.destination_datetime)
