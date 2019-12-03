@@ -39,7 +39,7 @@ dill==0.2.7.1
 diptest==0.0.0
 django>=2.0.11
 docutils==0.14
-ecdsa==0.13
+ecdsa==0.13.3
 entrypoints==0.2.3
 enum34==1.1.6
 fast-histogram==0.4
