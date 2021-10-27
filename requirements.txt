@@ -32,7 +32,7 @@ command-not-found==0.3
 cryptography>=2.3
 cycler==0.10.0
 Cython==0.28.2
-dask==0.17.4
+dask==2021.10.0
 decorator==4.2.1
 defer==1.0.6
 dill==0.2.7.1
