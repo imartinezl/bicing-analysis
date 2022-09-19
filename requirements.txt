@@ -98,7 +98,7 @@ lightning-python==1.2.1
 lime==0.1.1.31
 louis==2.6.4
 lxml==4.9.1
-Mako==1.0.3
+Mako==1.2.2
 Markdown==2.6.11
 MarkupSafe==1.0
 matplotlib==2.2.2
