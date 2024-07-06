@@ -22,7 +22,7 @@ bqplot==0.10.5
 brewer2mpl==1.4.1
 Brlapi==0.6.4
 bz2file==0.98
-certifi==2023.7.22
+certifi==2024.7.4
 cffi==1.11.5
 chardet==3.0.4
 checkbox-support==0.22
